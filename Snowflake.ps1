@@ -33,14 +33,35 @@ function Idm-SystemInfo {
                 name = 'server'
                 type = 'textbox'
                 label = 'Server'
-                description = 'Name of Microsoft SQL server'
+                description = 'Name of Snowflake server'
                 value = ''
             }
             @{
                 name = 'database'
                 type = 'textbox'
                 label = 'Database'
-                description = 'Name of Microsoft SQL database'
+                description = 'Name of Snowflake database'
+                value = ''
+            }
+            @{
+                name = 'schema'
+                type = 'textbox'
+                label = 'Schema'
+                description = 'Name of Snowflake schema'
+                value = ''
+            }
+             @{
+                name = 'role'
+                type = 'textbox'
+                label = 'Role'
+                description = 'Name of Snowflake Role'
+                value = ''
+            }
+             @{
+                name = 'warehouse'
+                type = 'textbox'
+                label = 'Warehouse'
+                description = 'Name of Snowflake Warehouse'
                 value = ''
             }
             @{
@@ -683,7 +704,7 @@ function Open-SnowflakeConnection {
 
     $connection_params = ConvertFrom-Json2 $ConnectionParams
 
-    $connection_string = ("Driver={{SnowflakeDSIIDriver}};Server={0};Database={1};UID={2};PWD={3}" -f $connection_params.server, $connection_params.database, $connection_params.username, $connection_params.password)
+    $connection_string = ("Driver={{SnowflakeDSIIDriver}};Server={0};Database={1};UID={2};PWD={3};warehouse={4};role={5};schema={6}" -f $connection_params.server, $connection_params.database, $connection_params.username, $connection_params.password, $connection_params.warehouse, $connection_params.role, $connection_params.schema)
     Log debug $connection_string
     if ($Global:SnowflakeConnection -and $connection_string -ne $Global:SnowflakeConnectionString) {
         Log info "SnowflakeConnection connection parameters changed"

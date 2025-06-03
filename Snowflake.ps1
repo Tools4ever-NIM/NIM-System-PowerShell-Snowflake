@@ -25,7 +25,7 @@ function Idm-SystemInfo {
         [string] $ConnectionParams
     )
 
-    Log info "-Connection=$Connection -TestConnection=$TestConnection -Configuration=$Configuration -ConnectionParams='$ConnectionParams'"
+    Log verbose "-Connection=$Connection -TestConnection=$TestConnection -Configuration=$Configuration -ConnectionParams='$ConnectionParams'"
     
     if ($Connection) {
         @(
@@ -93,7 +93,7 @@ function Idm-SystemInfo {
         @()
     }
 
-    Log info "Done"
+    Log verbose "Done"
 }
 
 
@@ -202,7 +202,7 @@ function Idm-Dispatcher {
         [string] $FunctionParams
     )
 
-    Log info "-Class='$Class' -Operation='$Operation' -GetMeta=$GetMeta -SystemParams='$SystemParams' -FunctionParams='$FunctionParams'"
+    Log verbose "-Class='$Class' -Operation='$Operation' -GetMeta=$GetMeta -SystemParams='$SystemParams' -FunctionParams='$FunctionParams'"
 
     if ($Class -eq '') {
 
@@ -530,7 +530,7 @@ function Idm-Dispatcher {
 
     }
 
-    Log info "Done"
+    Log verbose "Done"
 }
 
 
@@ -686,7 +686,7 @@ function Open-SnowflakeConnection {
     $connection_string = ("Driver={{SnowflakeDSIIDriver}};Server={0};Database={1};UID={2};PWD={3}" -f $connection_params.server, $connection_params.database, $connection_params.username, $connection_params.password)
     Log debug $connection_string
     if ($Global:SnowflakeConnection -and $connection_string -ne $Global:SnowflakeConnectionString) {
-        Log info "SnowflakeConnection connection parameters changed"
+        Log verbose "SnowflakeConnection connection parameters changed"
         Close-SnowflakeConnection
     }
 
@@ -699,7 +699,7 @@ function Open-SnowflakeConnection {
         #Log debug "Reusing SnowflakeConnection"
     }
     else {
-        Log info "Opening SnowflakeConnection '$connection_string'"
+        Log verbose "Opening SnowflakeConnection '$connection_string'"
 
         try {
             $connection = New-Object System.Data.Odbc.OdbcConnection
@@ -717,14 +717,14 @@ function Open-SnowflakeConnection {
             Write-Error $_
         }
 
-        Log info "Done"
+        Log verbose "Done"
     }
 }
 
 
 function Close-SnowflakeConnection {
     if ($Global:SnowflakeConnection) {
-        Log info "Closing SnowflakeConnection"
+        Log verbose "Closing SnowflakeConnection"
 
         try {
             $Global:SnowflakeConnection.Close()
@@ -734,6 +734,6 @@ function Close-SnowflakeConnection {
             # Purposely ignoring errors
         }
 
-        Log info "Done"
+        Log verbose "Done"
     }
 }

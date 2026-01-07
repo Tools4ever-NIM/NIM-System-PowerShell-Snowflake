@@ -1,8 +1,5 @@
 #
-# Microsoft SQL.ps1 - IDM System PowerShell Script for Microsoft SQL Server.
-#
-# Any IDM System PowerShell Script is dot-sourced in a separate PowerShell context, after
-# dot-sourcing the IDM Generic PowerShell Script '../Generic.ps1'.
+# Snowflake.ps1 - IDM System PowerShell script for Snowflake database
 #
 
 
@@ -10,6 +7,20 @@ $Log_MaskableKeys = @(
     'password'
 )
 
+# Check if ODBC Driver installed
+$driverPrefix = "Snowflake"
+$drivers64 = Get-ItemProperty -Path "HKLM:\SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers" -ErrorAction SilentlyContinue
+$matchingDrivers = $drivers64.PSObject.Properties | Where-Object { $_.Name -like "$driverPrefix*" }
+
+$Global:ModuleStatus = "<b><div class=`"alert alert-danger`" role=`"alert`">$($driverPrefix) ODBC Driver not installed.</div></b>"
+
+if ($matchingDrivers.Count -gt 0) {
+    "Found matching ODBC driver(s):"
+    $matchingDrivers | ForEach-Object { " - $($_.Name)" }
+	$Global:ModuleStatus = "<b><div class=`"alert alert-success`" role=`"alert`">$($matchingDrivers[0].Name) is installed.</div></b>"
+} else {
+    "No ODBC drivers found starting with '$($driverPrefix)'."
+}
 
 #
 # System functions
@@ -30,33 +41,58 @@ function Idm-SystemInfo {
     if ($Connection) {
         @(
             @{
-                name = 'server'
+				name = 'ModuleStatus'
+				type = 'text'
+				label = 'ODBC Status'
+				text = $Global:ModuleStatus
+			}
+			@{
+                name = 'connection_header'
+                type = 'text'
+                text = 'Connection'
+				tooltip = 'Connection information for the database'
+            }
+			@{
+                name = 'host_name'
                 type = 'textbox'
                 label = 'Server'
-                description = 'Name of Microsoft SQL server'
+                description = 'IP or Hostname of Server'
                 value = ''
             }
             @{
                 name = 'database'
                 type = 'textbox'
                 label = 'Database'
-                description = 'Name of Microsoft SQL database'
+                description = 'Name of database'
+                value = ''
+            }
+			@{
+                name = 'schema'
+                type = 'textbox'
+                label = 'Schema'
+                description = 'Name of schema'
+                value = ''
+            }
+			@{
+                name = 'warehouse'
+                type = 'textbox'
+                label = 'Warehouse'
+                description = 'Name of warehouse'
+                value = ''
+            }
+			@{
+                name = 'role'
+                type = 'textbox'
+                label = 'Role'
+                description = 'Name of role'
                 value = ''
             }
             @{
-                name = 'use_svc_account_creds'
-                type = 'checkbox'
-                label = 'Use credentials of service account'
-                value = $true
-            }
-            @{
-                name = 'username'
+                name = 'user'
                 type = 'textbox'
                 label = 'Username'
                 label_indent = $true
-                description = 'User account name to access Microsoft SQL server'
-                value = ''
-                hidden = 'use_svc_account_creds'
+                description = 'User account name to access server'
             }
             @{
                 name = 'password'
@@ -64,23 +100,41 @@ function Idm-SystemInfo {
                 password = $true
                 label = 'Password'
                 label_indent = $true
-                description = 'User account password to access Microsoft SQL server'
-                value = ''
-                hidden = 'use_svc_account_creds'
+                description = 'User account password to access server'
             }
             @{
+                name = 'query_timeout'
+                type = 'textbox'
+                label = 'Query Timeout'
+                description = 'Time it takes for the query to timeout'
+                value = '1800'
+            }
+			@{
+                name = 'connection_timeout'
+                type = 'textbox'
+                label = 'Connection Timeout'
+                description = 'Time it takes for the ODBC Connection to timeout'
+                value = '3600'
+            }
+			@{
+                name = 'session_header'
+                type = 'text'
+                text = 'Session Options'
+				tooltip = 'Options for system session'
+            }
+			@{
                 name = 'nr_of_sessions'
                 type = 'textbox'
                 label = 'Max. number of simultaneous sessions'
-                description = ''
-                value = 5
+                tooltip = ''
+                value = 1
             }
             @{
                 name = 'sessions_idle_timeout'
                 type = 'textbox'
                 label = 'Session cleanup idle time (minutes)'
-                description = ''
-                value = 30
+                tooltip = ''
+                value = 1
             }
         )
     }
@@ -676,49 +730,44 @@ function Invoke-SnowflakeCommand {
 }
 
 
-function Open-SnowflakeConnection {
+function Open-SnowFlakeConnection {
     param (
         [string] $ConnectionParams
     )
 
     $connection_params = ConvertFrom-Json2 $ConnectionParams
-
-    $connection_string = ("Driver={{SnowflakeDSIIDriver}};Server={0};Database={1};UID={2};PWD={3}" -f $connection_params.server, $connection_params.database, $connection_params.username, $connection_params.password)
-    Log debug $connection_string
-    if ($Global:SnowflakeConnection -and $connection_string -ne $Global:SnowflakeConnectionString) {
-        Log verbose "SnowflakeConnection connection parameters changed"
-        Close-SnowflakeConnection
+    $connection_string = ("Driver={{SnowflakeDSIIDriver}};Server={0};Database={1};UID={2};PWD={3};Schema={4};Warehouse={5};Role={6}" -f $connection_params.host_name, $connection_params.database, $connection_params.user, $connection_params.password, $connection_params.schema, $connection_params.warehouse, $connection_params.role)
+    
+    Log verbose $connection_string
+    
+    if ($Global:SnowFlakeConnection -and $connection_string -ne $Global:SnowFlakeConnectionString) {
+        Log verbose "SnowFlakeConnection connection parameters changed"
+        Close-SnowFlakeConnection
     }
 
-    if ($Global:SnowflakeConnection -and $Global:SnowflakeConnection.State -ne 'Open') {
-        Log warn "SnowflakeConnection State is '$($Global:SnowflakeConnection.State)'"
-        Close-SnowflakeConnection
+    if ($Global:SnowFlakeConnection -and $Global:SnowFlakeConnection.State -ne 'Open') {
+        Log warn "SnowFlakeConnection State is '$($Global:SnowFlakeConnection.State)'"
+        Close-SnowFlakeConnection
     }
 
-    if ($Global:SnowflakeConnection) {
-        #Log debug "Reusing SnowflakeConnection"
+    Log verbose "Opening SnowFlakeConnection '$connection_string'"
+
+    try {
+        $connection = (new-object System.Data.Odbc.OdbcConnection);
+        $connection.connectionstring = $connection_string
+		$connection.ConnectionTimeout = $connection_params.connection_timeout
+        $connection.open();
+
+        $Global:SnowFlakeConnection       = $connection
+        $Global:SnowFlakeConnectionString = $connection_string
     }
-    else {
-        Log verbose "Opening SnowflakeConnection '$connection_string'"
-
-        try {
-            $connection = New-Object System.Data.Odbc.OdbcConnection
-            $connection.ConnectionString = $connection_string
-            $connection.Open()
-
-            $Global:SnowflakeConnection       = $connection
-            $Global:SnowflakeConnectionString = $connection_string
-
-            $Global:ColumnsInfoCache = @{}
-            $Global:SqlInfoCache = @{}
-        }
-        catch {
-            Log error "Failed: $_"
-            Write-Error $_
-        }
-
-        Log verbose "Done"
+    catch {
+        Log error "Connection Failure: $($_)"
+        throw $_
     }
+
+    Log verbose "Done"
+    
 }
 
 

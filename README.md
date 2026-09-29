@@ -1,4 +1,7 @@
 # Snowflake ODBC
+
+Read the [Snowflake integration documentation](https://docs.nimsuite.com/en/integrations/snowflake) for connector details and related guides.
+
 <img src="https://github.com/Tools4ever-NIM/NIM-System-PowerShell-Snowflake/assets/24281600/7ae1ec17-5455-4ce4-922f-eebae9b9b62f" width="256px" />
 
 
